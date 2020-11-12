@@ -1,1 +1,2 @@
+-- to ensure CamelCase in code, use double quotes
 -- SELECT film_id AS "FilmID", title AS "FilmTitle", description AS "FilmDesc", release_year AS "FilmRelYear", rental_rate / rental_duration AS "DayRate" FROM film;
