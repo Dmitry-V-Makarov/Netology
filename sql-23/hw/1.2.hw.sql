@@ -1,18 +1,18 @@
--- Основная часть
+-- Main part
 
--- Задание 2
--- SELECT * FROM customer WHERE active = 0;
+-- Assignment 2
+SELECT * FROM customer WHERE active = 0;
 
--- Задание 3
--- SELECT * FROM film WHERE release_year = 2006;
+-- Assignment 3
+SELECT * FROM film WHERE release_year = 2006;
 
--- Задание 4
--- SELECT * FROM payment ORDER BY payment_date DESC LIMIT 10;
+-- Assignment 4
+SELECT * FROM payment ORDER BY payment_date DESC LIMIT 10;
 
 
--- Дополнительная часть
+-- Additional exercises
 
--- Задание 5 и 6
+-- Assignment 5 and 6
 SELECT  
   tc.constraint_schema, 
   tc.table_name,
