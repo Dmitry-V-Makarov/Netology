@@ -23,7 +23,7 @@ JOIN address a ON staff.address_id = a.address_id
 JOIN city ON a.city_id = city.city_id
 WHERE staff.store_id = (SELECT store_id FROM customer c GROUP BY store_id HAVING COUNT (customer_id) > 300); */
 
--- Assignment 5
+-- Assignment 4
 /* SELECT COUNT (DISTINCT actor.actor_id)
 FROM actor
 JOIN film_actor fa ON actor.actor_id = fa.actor_id 
