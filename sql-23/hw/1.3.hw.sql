@@ -1,5 +1,5 @@
 
--- Practice 4
+-- Practice 4 (from lecture 1.3)
 -- Table with 3 attributes: film title, actor name, number of films per actor
 /* SELECT film.title, actor.actor_id, actor.first_name, actor.last_name, COUNT(actor.actor_id) OVER (PARTITION BY actor.actor_id) AS filmography
 FROM film
