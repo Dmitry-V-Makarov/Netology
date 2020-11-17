@@ -26,3 +26,22 @@ SET birth_place = 'New York'
 WHERE birth_place IS NULL; */
 
 -- Practice 3
+/* CREATE TABLE works_train (
+	work_id serial PRIMARY KEY,
+	work_year SMALLINT NOT NULL,
+	work_title VARCHAR(300) NOT NULL,
+	author_ref INTEGER REFERENCES author_train(id)
+); */ 
+
+/* INSERT INTO works_train (work_year, work_title, author_ref) 
+VALUES 
+	(1985, 'Catcher in the Rye', 1), 
+	(1999, 'Untouchables', 2),
+	(2000, 'New Book', 3); */
+
+/* SELECT * FROM works_train w
+JOIN author_train a ON w.author_ref = a.id */
+
+-- DELETE FROM author_train WHERE id = 3;
+
+-- Practice 4
