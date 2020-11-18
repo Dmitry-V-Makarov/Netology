@@ -1,13 +1,13 @@
 -- Main part
 
 -- Assignment 2
--- SELECT * FROM customer WHERE active = 0;
+SELECT * FROM customer WHERE active = 0;
 
 -- Assignment 3
--- SELECT * FROM film WHERE release_year = 2006;
+SELECT * FROM film WHERE release_year = 2006;
 
 -- Assignment 4
--- SELECT * FROM payment ORDER BY payment_date DESC LIMIT 10;
+SELECT * FROM payment ORDER BY payment_date DESC LIMIT 10;
 
 
 -- Additional exercises
