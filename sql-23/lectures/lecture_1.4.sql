@@ -45,3 +45,32 @@ JOIN author_train a ON w.author_ref = a.id */
 -- DELETE FROM author_train WHERE id = 3;
 
 -- Practice 4
+/* CREATE TABLE orders_train (
+ID serial NOT NULL PRIMARY KEY,
+info json NOT NULL
+); */
+
+/* INSERT INTO orders_train (info)
+VALUES
+(
+'{"customer": "John Doe", "items": {"product": "Beer", "qty": 6}}'
+),
+(
+'{"customer": "Lily Bush", "items": {"product": "Diaper", "qty": 24}}'
+),
+(
+'{"customer": "Josh William", "items": {"product": "Toy Car", "qty": 1}}'
+),
+(
+'{"customer": "Mary Clark", "items": {"product": "Toy Train", "qty": 2}}'
+); */
+
+-- SELECT SUM (CAST (info -> 'items' ->> 'qty' as INTEGER)) as total FROM orders;
+
+-- Practice 5
+-- SELECT sub.title, COUNT(feat) GROUP BY sub.title FROM (SELECT film_id, title, unnest(special_features) feat FROM film GROUP BY film_id ORDER BY film_id) sub;
+
+/* SELECT sub.title, COUNT(sub.feat) feat_count
+FROM (SELECT film_id, title, unnest(special_features) feat FROM film GROUP BY film_id ORDER BY film_id) as sub
+GROUP BY sub.title ORDER BY sub.title; */
+
