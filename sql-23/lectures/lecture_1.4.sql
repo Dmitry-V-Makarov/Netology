@@ -68,9 +68,10 @@ VALUES
 SELECT SUM (CAST (info -> 'items' ->> 'qty' as INTEGER)) as total FROM orders;
 
 -- Practice 5
-SELECT sub.title, COUNT(feat) GROUP BY sub.title FROM (SELECT film_id, title, unnest(special_features) feat FROM film GROUP BY film_id ORDER BY film_id) sub;
-
 SELECT sub.title, COUNT(sub.feat) feat_count
 FROM (SELECT film_id, title, unnest(special_features) feat FROM film GROUP BY film_id ORDER BY film_id) as sub
 GROUP BY sub.title ORDER BY sub.title;
 
+-- better to use array_lenght instead of unnest
+
+SELECT title, array_length(special_features, 1) feat_count FROM film ORDER BY film_id;

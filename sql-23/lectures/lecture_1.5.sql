@@ -1,76 +1,38 @@
 
 -- Practice 1
-CREATE TABLE author_train (
-	id serial PRIMARY KEY,
-	full_name VARCHAR(100) NOT NULL,
-	alias VARCHAR(50) UNIQUE NOT NULL,
-	birthdate DATE NOT NULL
-);
-
-INSERT INTO author_train (full_name, alias, birthdate) VALUES ('Alex Smith', 'Alex', '1980-11-27');
-
-SELECT * FROM author_train; */
+-- Table with 3 attributes: film title, actor name, number of films per actor
+-- We basically take each actor as WINDOW and count the number of entries and then give it as a result
+-- without film.title we would be able to use GROUP BY?
+-- important! COUNT appears in every line!
+SELECT film.title, actor.actor_id, actor.first_name, actor.last_name, COUNT(actor.actor_id) OVER (PARTITION BY actor.actor_id) AS filmography
+FROM film
+JOIN film_actor ON film.film_id = film_actor.film_id
+JOIN actor ON film_actor.actor_id = actor.actor_id
+ORDER BY film.title
 
 -- Practice 2
-INSERT INTO author_train (full_name, alias, birthdate) 
-VALUES 
-	('Mitch Rurk', 'Mickey', '1985-04-02'), 
-	('John Dirk', 'Hammer', '1975-02-28');
+-- staff first name, last_name, number of rentals
 
-SELECT * FROM author_train;
+SELECT * FROM rental;
 
-ALTER TABLE author_train ADD COLUMN birth_place VARCHAR(100)
-
-UPDATE author_train 
-SET birth_place = 'New York'
-WHERE birth_place IS NULL;
+WITH cte_staff_rental AS (
+SELECT staff.staff_id, staff.first_name, staff.last_name, COUNT (rental.rental_id)
+FROM rental LEFT JOIN staff ON rental.staff_id = staff.staff_id
+GROUP BY staff.staff_id
+) SELECT * FROM cte_staff_rental;
 
 -- Practice 3
-CREATE TABLE works_train (
-	work_id serial PRIMARY KEY,
-	work_year SMALLINT NOT NULL,
-	work_title VARCHAR(300) NOT NULL,
-	author_ref INTEGER REFERENCES author_train(id)
-);
+-- last rented film per customer
+CREATE OR REPLACE VIEW last_rental AS
+WITH rental_d AS (SELECT ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY rental_date DESC) AS row_n, *
+FROM (  
+SELECT c.customer_id, c.first_name, c.last_name, c.email, r.rental_date, f.title
+FROM customer c
+LEFT JOIN rental r ON c.customer_id = r.customer_id 
+LEFT JOIN inventory i ON r.rental_id = i.inventory_id 
+LEFT JOIN film f ON f.film_id = i.film_id
+WHERE f.title IS NOT NULL
+ORDER BY c.customer_id, r.rental_date DESC) rental_d2)
+SELECT * FROM rental_d WHERE row_n = 1;
 
-INSERT INTO works_train (work_year, work_title, author_ref) 
-VALUES 
-	(1985, 'Catcher in the Rye', 1), 
-	(1999, 'Untouchables', 2),
-	(2000, 'New Book', 3);
-
-SELECT * FROM works_train w
-JOIN author_train a ON w.author_ref = a.id;
-
-DELETE FROM author_train WHERE id = 3;
-
--- Practice 4
-CREATE TABLE orders_train (
-ID serial NOT NULL PRIMARY KEY,
-info json NOT NULL
-);
-
-INSERT INTO orders_train (info)
-VALUES
-(
-'{"customer": "John Doe", "items": {"product": "Beer", "qty": 6}}'
-),
-(
-'{"customer": "Lily Bush", "items": {"product": "Diaper", "qty": 24}}'
-),
-(
-'{"customer": "Josh William", "items": {"product": "Toy Car", "qty": 1}}'
-),
-(
-'{"customer": "Mary Clark", "items": {"product": "Toy Train", "qty": 2}}'
-);
-
-SELECT SUM (CAST (info -> 'items' ->> 'qty' as INTEGER)) as total FROM orders;
-
--- Practice 5
-SELECT sub.title, COUNT(feat) GROUP BY sub.title FROM (SELECT film_id, title, unnest(special_features) feat FROM film GROUP BY film_id ORDER BY film_id) sub;
-
-SELECT sub.title, COUNT(sub.feat) feat_count
-FROM (SELECT film_id, title, unnest(special_features) feat FROM film GROUP BY film_id ORDER BY film_id) as sub
-GROUP BY sub.title ORDER BY sub.title;
-
+SELECT * FROM last_rental;
