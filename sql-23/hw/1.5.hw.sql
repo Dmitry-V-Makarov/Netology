@@ -5,7 +5,7 @@ FROM rental;
 
 -- Assignment 2
 -- EXPLAIN ANALYZE
-CREATE MATERIALIZED VIEW n_rented AS
+-- CREATE MATERIALIZED VIEW n_rented AS
 SELECT first_name, last_name, COUNT(sub.special_features) n_films
 FROM (
 SELECT c.customer_id, c.first_name, c.last_name, f.film_id, f.special_features 
@@ -18,8 +18,8 @@ WHERE 'Behind the Scenes' = ANY(f.special_features) -- Option 1
 -- Option 3 would be to unnest special_features /not optimal/
 ) sub
 GROUP BY customer_id, first_name, last_name
-ORDER BY n_films DESC
-WITH NO DATA;
+ORDER BY n_films DESC;
+-- WITH NO DATA;
 
 REFRESH MATERIALIZED VIEW n_rented;
 

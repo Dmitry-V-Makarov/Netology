@@ -1,11 +1,15 @@
+
 -- EXPLAIN ANALYZE
 select distinct cu.first_name  || ' ' || cu.last_name as name, 
 	count(ren.iid) over (partition by cu.customer_id)
+-- selecting customer
 from customer cu
 full outer join 
 	(select *, r.inventory_id as iid, inv.sf_string as sfs, r.customer_id as cid
+	-- joining rental
 	from rental r 
-	full outer join 
+	full outer join
+		-- joining film and inventory, unnesting special_features
 		(select *, unnest(f.special_features) as sf_string
 		from inventory i
 		full outer join film f on f.film_id = i.film_id) as inv 
