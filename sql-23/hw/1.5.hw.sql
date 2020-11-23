@@ -4,7 +4,7 @@ SELECT customer_id, rental_id, ROW_NUMBER() OVER (PARTITION BY customer_id ORDER
 FROM rental;
 
 -- Assignment 2
-EXPLAIN ANALYZE
+-- EXPLAIN ANALYZE
 -- CREATE MATERIALIZED VIEW n_rented AS
 SELECT first_name, last_name, COUNT(sub.special_features) n_films
 FROM (
@@ -33,6 +33,21 @@ CREATE INDEX film_index ON film USING GIN(special_features);
 REFRESH MATERIALIZED VIEW n_rented;
 
 SELECT * FROM n_rented;
+
+-- Alternative solution
+explain analyze
+select customer_id, count (film_id) cnt_film 
+from rental rt 
+left join (
+	  select inventory_id, iv.film_id 
+	  from inventory iv
+	  left join (
+		    select film_id 
+		    from film
+		    where 'Behind the Scenes' = any (special_features)) bs 
+	  on iv.film_id = bs.film_id) fbs 
+on rt.inventory_id = fbs.inventory_id
+group by customer_id;
 
 
 
