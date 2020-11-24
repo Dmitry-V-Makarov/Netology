@@ -1,6 +1,5 @@
 
 
-// Main assignment
 use test
 
 db.users.insert({first_name : "Alex", last_name: "Smith", contacts : {p1 : "+1 494 9494", p2 : "+1 202 3234", address : "23, Clear road"}})
@@ -9,14 +8,11 @@ db.users.insert({first_name : "Mary", last_name: "Jones", contacts : {p1 : "+1 4
 db.users.find()
 
 
-// Additional assignment
-db.test.aggregate([
-{
-$project: 
-{
-first_name: 1, last_name, 1, 
-contacts: {
-$objectToArray: "contacts" 
-}
-}
-}])
+db.users.aggregate( [ 
+	{ $project : 
+		{ _id: 0, 
+		first_name : 1, 
+		last_name : 1, 
+		contacts : { $objectToArray: "$contacts" } } },
+	{ $addFields: { "contacts": { $size: "$contacts" } }}
+ ] )
