@@ -154,7 +154,7 @@ ORDER BY
 
 select tc.table_name, tc.constraint_name 
 from information_schema.table_constraints tc
-where tc.constraint_schema = 'dvd-rental' and tc.constraint_type = 'PRIMARY KEY'
+where tc.constraint_schema = 'public' and tc.constraint_type = 'PRIMARY KEY'
 
 название_схемы.название_таблицы --from
 название_таблицы.название_столбца --select
@@ -210,7 +210,7 @@ from film
 where upper(rating::text) like '%PG%'
 
 select pg_typeof(rating) --enum
-from film 
+from film
 
 5.2* ѕолучить информацию по покупател€м с именем содержашим подстроку'jam' (независимо от регистра написани€), в виде: "им€ фамили€" - одной строкой.
 
