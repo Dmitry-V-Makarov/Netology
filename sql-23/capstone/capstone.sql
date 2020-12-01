@@ -1,5 +1,4 @@
 
-
 -- query 1
 SELECT
 	city,
@@ -12,6 +11,7 @@ HAVING
 	COUNT(airport_code) > 1
 ORDER BY
 	city;
+
 
 -- query 2
 SELECT DISTINCT
@@ -32,6 +32,7 @@ WHERE
 		bookings.aircrafts a
 	WHERE range = (SELECT MAX(range) FROM bookings.aircrafts));
 			
+
 -- query 3
 SELECT
 	f.scheduled_departure,
@@ -44,6 +45,7 @@ WHERE
 ORDER BY
 	delay_in_hours DESC
 LIMIT 10;
+
 
 -- query 4
 SELECT
@@ -65,6 +67,7 @@ LEFT JOIN bookings.boarding_passes bp ON
 	tf.ticket_no = bp.ticket_no AND tf.flight_id = bp.flight_id
 WHERE
 	bp.boarding_no IS NULL;
+
 
 -- query 5
 -- people onboard, percentage of empty seats per flight of actually departed flights with cumulative sum of departed previously that day by departure airport
@@ -114,6 +117,7 @@ GROUP BY
 	f.aircraft_code,
 	a.model;
 
+
 -- query 7
 -- CTE with distinct flights showing 2 classes only + row number
 WITH economy_business_only AS
@@ -150,6 +154,7 @@ FROM (
 	) compare_econ_smallest
 WHERE econ_price != smallest_price;
 
+
 -- query 8
 CREATE VIEW dep_city AS (
 	SELECT r.departure_city 
@@ -170,7 +175,6 @@ ORDER BY combinations;
 SELECT DISTINCT CONCAT (departure_city, ' ', arrival_city) combinations
 FROM bookings.routes r
 ORDER BY combinations;
-
 
 -- choose all possible direct flights
 SELECT DISTINCT CONCAT (departure_city, ' ', arrival_city) combinations
