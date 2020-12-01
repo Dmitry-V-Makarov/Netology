@@ -67,37 +67,39 @@ WHERE
 	bp.boarding_no IS NULL;
 
 -- query 5
-SELECT sub.flight_id, sub.seats_available
-FROM (
-SELECT
-	f.flight_id,
-	100 * (1- COUNT(bp.boarding_no IS NOT NULL) / COUNT(s.seat_no)::float) seats_available
-FROM
-	bookings.flights f
+-- people onboard, percentage of empty seats per flight of actually departed flights with cumulative sum of departed previously that day by departure airport
+SELECT 
+	fv.flight_id, 
+	fv.flight_no, 
+	fv.departure_airport_name dep_name, 
+	fv.arrival_airport_name arr_name, 
+	fv.aircraft_code ac,
+	fv.actual_departure act_depart,
+	COUNT (fv.flight_id) onboard,
+	ts.t_seats,
+	ts.t_seats - COUNT (fv.flight_id) e_seats,
+	ROUND(100 * (1 - COUNT(fv.flight_id) / ts.t_seats::numeric), 2) e_seats_rel,
+	SUM(COUNT (fv.flight_id)) OVER(PARTITION BY fv.departure_airport_name, DATE(fv.actual_departure) ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW ) cumul_day
+FROM bookings.flights_v fv
 LEFT JOIN bookings.ticket_flights tf ON
-	f.flight_id = tf.flight_id
+	fv.flight_id = tf.flight_id
 RIGHT JOIN bookings.boarding_passes bp ON
-	tf.ticket_no = bp.ticket_no 
-LEFT JOIN bookings.aircrafts a ON
-	f.aircraft_code = a.aircraft_code
-LEFT JOIN bookings.seats s ON
-	a.aircraft_code = s.aircraft_code
-GROUP BY
-	f.flight_id
-ORDER BY
-	seats_available DESC) sub;
+	tf.ticket_no = bp.ticket_no AND tf.flight_id = bp.flight_id 
+-- capacity of each AC
+LEFT JOIN (SELECT aircraft_code, COUNT(aircraft_code) t_seats FROM bookings.seats s GROUP BY aircraft_code) ts ON
+	fv.aircraft_code = ts.aircraft_code
+GROUP BY 
+	fv.flight_id, 
+	fv.flight_no, 
+	fv.departure_airport_name, 
+	fv.arrival_airport_name, 
+	fv.aircraft_code,
+	ts.t_seats, 
+	fv.actual_departure
+-- only actual departures
+HAVING fv.actual_departure IS NOT NULL
+ORDER BY fv.departure_airport_name, fv.actual_departure;
 
-SELECT
-	f.actual_departure, f.departure_airport, f.flight_id
-FROM
-	bookings.flights f
-LEFT JOIN bookings.ticket_flights tf ON
-	f.flight_id = tf.flight_id
-LEFT JOIN bookings.boarding_passes bp ON
-	tf.flight_id = bp.flight_id
-WHERE f.actual_departure IS NOT NULL
-ORDER BY
-	f.departure_airport, f.actual_departure
 
 -- query 6
 SELECT
@@ -181,19 +183,11 @@ ORDER BY combinations;
 
 
 -- query 9
-SELECT * FROM bookings.routes r;
-SELECT * FROM bookings.airports a ORDER BY airport_name;
 
-/* 
- * step 1: add latitude and longitude to routes
- * step 2.1: calculate distance in rad: d = arccos {sin(latitude_a)·sin(latitude_b) + cos(latitude_a)·cos(latitude_b)·cos(longitude_a - longitude_b)}, 
- * step 2.2: calculate distance in km: L = d·R, where R = 6371 km
- * step 3: add aicraft range based on aircraft code
- * step 4: add comparison column
- */
-
--- airport lat and long
-WITH ap_lat_long AS (
+-- distance and range comparison category for each flight
+WITH dist_range_comparison AS (
+-- airport lat and lon
+WITH ap_lat_lon AS (
 SELECT
 	dep_air,
 	dep_name,
@@ -201,9 +195,9 @@ SELECT
 	arr_name,
 	ac,
 	lat_a,
-	long_a,
+	lon_a,
 	latitude lat_b,
-	longitude long_b
+	longitude lon_b
 FROM
 	(
 	SELECT
@@ -213,25 +207,33 @@ FROM
 		r.arrival_airport_name arr_name,
 		r.aircraft_code ac,
 		a.latitude lat_a,
-		a.longitude long_a
+		a.longitude lon_a
 	FROM
 		bookings.routes r
-	-- departure airport lat and long only
+	-- departure airport lat and lon only
 	LEFT JOIN bookings.airports a ON
-		r.departure_airport = a.airport_code) dep_lat_long
--- departure and arrival lat and long
+		r.departure_airport = a.airport_code) dep_lat_lon
+-- both departure and arrival lat and lon
 LEFT JOIN bookings.airports a2 ON
-	dep_lat_long.arr_air = a2.airport_code)
+	dep_lat_lon.arr_air = a2.airport_code)
 SELECT 
-	*, 
-	acos(sin(radians(lat_a))*sin(radians(lat_b))+cos(radians(lat_a))*cos(radians(lat_b))*cos(radians(long_b - long_a))) d_radians,  
-	acos(sin(radians(lat_a))*sin(radians(lat_b))+cos(radians(lat_a))*cos(radians(lat_b))*cos(radians(long_b - long_a))) * 6371 d_km
-FROM ap_lat_long apll
-LEFT JOIN bookings.aircrafts a3 
-ON apll.ac = a3.aircraft_code;
-	
-/* (CASE 
-		WHEN apll.d_km - apll."range" > 200 THEN 'Enough'
-		WHEN apll.d_km - apll."range" <= 200 AND apll.d_km - apll."range" > 0 THEN 'Almost Enough'
-		WHEN apll.d_km - apll."range" <= 0 THEN 'Not Enough'
-	END) range_eval*/
+	dep_air,
+	dep_name,
+	arr_air,
+	arr_name,
+	model,  
+	ROUND((acos(sin(radians(lat_a))*sin(radians(lat_b))+cos(radians(lat_a))*cos(radians(lat_b))*cos(radians(lon_b - lon_a))) * 6371)::numeric, 1) dist_km,
+	"range"
+FROM ap_lat_lon
+LEFT JOIN bookings.aircrafts ac 
+ON ap_lat_lon.ac = ac.aircraft_code)
+SELECT 
+	*,
+	(CASE 
+		WHEN "range" - dist_km > 100 THEN 'Enough'
+		WHEN "range" - dist_km <= 100 AND "range" - dist_km > 0 THEN 'Almost enough'
+		WHEN "range" - dist_km <= 0 THEN 'Not Enough'
+	END) coverage
+FROM dist_range_comparison
+-- WHERE "range" - dist_km <= 0
+ORDER BY dist_km DESC;
