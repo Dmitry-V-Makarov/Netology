@@ -34,39 +34,36 @@ WHERE
 			
 
 -- query 3
-SELECT
+SELECT 
+	scheduled_departure,
+	actual_departure,
+	("delay_in_s"::varchar(24) || ' seconds')::interval as delay_in_HMS
+FROM
+(SELECT
 	f.scheduled_departure,
 	f.actual_departure,
-	ROUND((EXTRACT(EPOCH FROM (f.actual_departure - f.scheduled_departure)) / 3600) ::numeric, 1) AS delay_in_hours
+	ROUND((EXTRACT(EPOCH FROM (f.actual_departure - f.scheduled_departure))) ::numeric, 1) AS delay_in_s
 FROM
 	bookings.flights f
 WHERE 
 	f.actual_departure IS NOT NULL AND EXTRACT(EPOCH FROM (f.actual_departure - f.scheduled_departure)) != 0
 ORDER BY
-	delay_in_hours DESC
-LIMIT 10;
+	delay_in_s DESC
+LIMIT 10) sub;
 
 
 -- query 4
-SELECT
-	b.book_ref,
-	t.ticket_no,
-	tf.ticket_no,
-	tf.fare_conditions,
-	bp.boarding_no,
-	bp.flight_id,
-	bp.ticket_no,
-	bp.seat_no
+SELECT DISTINCT b.book_ref 
 FROM
-	bookings.bookings b
-RIGHT JOIN bookings.tickets t ON
+	bookings.bookings b 
+RIGHT JOIN bookings.tickets t ON 
 	b.book_ref = t.book_ref
-RIGHT JOIN bookings.ticket_flights tf ON
-	t.ticket_no = tf.ticket_no
 LEFT JOIN bookings.boarding_passes bp ON
-	tf.ticket_no = bp.ticket_no AND tf.flight_id = bp.flight_id
+	t.ticket_no = bp.ticket_no
 WHERE
-	bp.boarding_no IS NULL;
+	bp.boarding_no IS NULL
+ORDER BY
+	b.book_ref;
 
 
 -- query 5
@@ -82,7 +79,7 @@ SELECT
 	ts.t_seats,
 	ts.t_seats - COUNT (fv.flight_id) e_seats,
 	ROUND(100 * (1 - COUNT(fv.flight_id) / ts.t_seats::numeric), 2) e_seats_rel,
-	SUM(COUNT (fv.flight_id)) OVER(PARTITION BY fv.departure_airport_name, DATE(fv.actual_departure) ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW ) cumul_day
+	SUM(COUNT (fv.flight_id)) OVER(PARTITION BY fv.departure_airport_name, DATE(fv.actual_departure) ORDER BY fv.departure_airport_name, fv.actual_departure ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) cumul_day
 FROM bookings.flights_v fv
 LEFT JOIN bookings.ticket_flights tf ON
 	fv.flight_id = tf.flight_id
@@ -100,8 +97,8 @@ GROUP BY
 	ts.t_seats, 
 	fv.actual_departure
 -- only actual departures
-HAVING fv.actual_departure IS NOT NULL
-ORDER BY fv.departure_airport_name, fv.actual_departure;
+HAVING fv.actual_departure IS NOT NULL;
+-- ORDER BY fv.departure_airport_name, fv.actual_departure;
 
 
 -- query 6
