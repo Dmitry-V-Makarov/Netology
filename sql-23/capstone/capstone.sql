@@ -79,7 +79,10 @@ SELECT
 	ts.t_seats,
 	ts.t_seats - COUNT (fv.flight_id) e_seats,
 	ROUND(100 * (1 - COUNT(fv.flight_id) / ts.t_seats::numeric), 2) e_seats_rel,
-	SUM(COUNT (fv.flight_id)) OVER(PARTITION BY fv.departure_airport_name, DATE(fv.actual_departure) ORDER BY fv.departure_airport_name, fv.actual_departure ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) cumul_day
+	SUM(COUNT (fv.flight_id)) 
+		OVER(PARTITION BY fv.departure_airport_name, DATE(fv.actual_departure) 
+		ORDER BY fv.departure_airport_name, fv.actual_departure 
+		ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) cumul_day
 FROM bookings.flights_v fv
 LEFT JOIN bookings.ticket_flights tf ON
 	fv.flight_id = tf.flight_id
