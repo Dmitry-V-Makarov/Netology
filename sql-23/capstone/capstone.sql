@@ -81,7 +81,7 @@ SELECT
 	ROUND(100 * (1 - COUNT(fv.flight_id) / ts.t_seats::numeric), 2) e_seats_rel,
 	SUM(COUNT (fv.flight_id)) 
 		OVER(PARTITION BY fv.departure_airport_name, DATE(fv.actual_departure) 
-		ORDER BY fv.departure_airport_name, fv.actual_departure 
+		ORDER BY fv.actual_departure 
 		ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) cumul_day
 FROM bookings.flights_v fv
 LEFT JOIN bookings.ticket_flights tf ON
@@ -101,7 +101,6 @@ GROUP BY
 	fv.actual_departure
 -- only actual departures
 HAVING fv.actual_departure IS NOT NULL;
--- ORDER BY fv.departure_airport_name, fv.actual_departure;
 
 
 -- query 6
@@ -119,11 +118,45 @@ GROUP BY
 
 
 -- query 7
-SELECT * 
+-- Step 1: max and min amount by flight and by class
+WITH min_max_amount AS (
+SELECT
+	ROW_NUMBER() OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS row_n,
+	f.flight_id,
+	f.flight_no,
+	f.departure_airport dep,
+	f.arrival_airport arr,
+	tf.fare_conditions fare,
+	MAX(amount) OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS max_amount,
+	MIN(amount) OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS min_amount
 FROM bookings.flights f
 RIGHT JOIN bookings.ticket_flights tf 
-ON f.flight_id = tf.flight_id 
-ORDER BY f.flight_id, tf.fare_conditions 
+ON f.flight_id = tf.flight_id
+WHERE tf.fare_conditions != 'Comfort'
+ORDER BY f.flight_id, tf.fare_conditions)
+-- Step 4: max price in economy vs. min price in business by flight
+SELECT
+	e.flight_id,
+	e.flight_no,
+	e.dep,
+	e.arr,
+	e.max_amount econ_max,
+	b.min_amount business_min
+FROM
+-- Step 2: Economy ticket with min and max amount by flight
+(SELECT
+	flight_id, flight_no, dep, arr, min_amount, max_amount
+FROM min_max_amount
+WHERE row_n = 1 AND fare = 'Economy') e
+LEFT JOIN
+-- Step 3: Business ticket with min and max amount by flight
+(SELECT
+	flight_id, flight_no, dep, arr, min_amount, max_amount
+FROM min_max_amount
+WHERE row_n = 1 AND fare = 'Business') b
+ON e.flight_id = b.flight_id
+-- Step 5: flights with (both business AND economy) AND min in business < max in economy
+WHERE b.flight_id IS NOT NULL AND b.min_amount < e.max_amount;
 
 
 -- query 8
