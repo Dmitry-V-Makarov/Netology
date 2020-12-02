@@ -119,40 +119,11 @@ GROUP BY
 
 
 -- query 7
--- CTE with distinct flights showing 2 classes only + row number
-WITH economy_business_only AS
-(
--- CTE showing distinct flights with all classes
-WITH all_classes AS
-(
-	SELECT CONCAT(f.departure_airport , ' ', f.arrival_airport) flight, tf.fare_conditions, ROUND(AVG(tf.amount), 2) f_cost
-	FROM bookings.flights f 
-	LEFT JOIN bookings.airports a 
-	ON f.arrival_airport = a.airport_code
-	LEFT JOIN bookings.ticket_flights tf 
-	ON f.flight_id = tf.flight_id
-	GROUP BY flight, tf.fare_conditions 
-	HAVING CONCAT(f.departure_airport , ' ', f.arrival_airport) IS NOT NULL AND tf.fare_conditions IS NOT NULL
-	ORDER BY flight, tf.fare_conditions
-)
--- selecting Economy AND Business flights
-SELECT ROW_NUMBER() OVER(PARTITION BY flight ORDER BY fare_conditions) row_n, *
-FROM (
-	SELECT * FROM all_classes
-	WHERE fare_conditions != 'Comfort' AND flight IN (
-	SELECT flight FROM all_classes 
-	GROUP BY flight
-	HAVING COUNT(fare_conditions) = 2)
-	) econ_AND_business
-)
--- showing flights where economy class does not have the smallest price (i.e it is cheaper to travel in business class)
-SELECT flight, econ_price, smallest_price 
-FROM (
-	SELECT row_n, flight, f_cost AS econ_price, MIN(f_cost) OVER(PARTITION BY flight) smallest_price
-	FROM economy_business_only
-	WHERE row_n = 2
-	) compare_econ_smallest
-WHERE econ_price != smallest_price;
+SELECT * 
+FROM bookings.flights f
+RIGHT JOIN bookings.ticket_flights tf 
+ON f.flight_id = tf.flight_id 
+ORDER BY f.flight_id, tf.fare_conditions 
 
 
 -- query 8
