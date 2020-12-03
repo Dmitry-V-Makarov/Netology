@@ -118,6 +118,8 @@ GROUP BY
 
 
 -- query 7
+
+-- WITH CTE
 -- Step 1: max and min amount by flight and by class
 WITH min_max_amount AS (
 SELECT
@@ -158,36 +160,113 @@ ON e.flight_id = b.flight_id
 -- Step 5: flights with (both business AND economy) AND min in business < max in economy
 WHERE b.flight_id IS NOT NULL AND b.min_amount < e.max_amount;
 
+-- WITHOUT CTE
+SELECT
+	e.flight_id,
+	e.flight_no,
+	e.dep,
+	e.arr,
+	e.max_amount econ_max,
+	b.min_amount business_min
+FROM
+(SELECT
+	flight_id, flight_no, dep, arr, min_amount, max_amount
+FROM 
+(SELECT
+	ROW_NUMBER() OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS row_n,
+	f.flight_id,
+	f.flight_no,
+	f.departure_airport dep,
+	f.arrival_airport arr,
+	tf.fare_conditions fare,
+	MAX(amount) OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS max_amount,
+	MIN(amount) OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS min_amount
+FROM bookings.flights f
+RIGHT JOIN bookings.ticket_flights tf 
+ON f.flight_id = tf.flight_id
+WHERE tf.fare_conditions != 'Comfort'
+ORDER BY f.flight_id, tf.fare_conditions) sub
+WHERE row_n = 1 AND fare = 'Economy') e
+LEFT JOIN
+(SELECT
+	flight_id, flight_no, dep, arr, min_amount, max_amount
+FROM 
+(SELECT
+	ROW_NUMBER() OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS row_n,
+	f.flight_id,
+	f.flight_no,
+	f.departure_airport dep,
+	f.arrival_airport arr,
+	tf.fare_conditions fare,
+	MAX(amount) OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS max_amount,
+	MIN(amount) OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS min_amount
+FROM bookings.flights f
+RIGHT JOIN bookings.ticket_flights tf 
+ON f.flight_id = tf.flight_id
+WHERE tf.fare_conditions != 'Comfort'
+ORDER BY f.flight_id, tf.fare_conditions) sub
+WHERE row_n = 1 AND fare = 'Business') b
+ON e.flight_id = b.flight_id
+WHERE b.flight_id IS NOT NULL AND b.min_amount < e.max_amount;
+
 
 -- query 8
-CREATE VIEW dep_city AS (
-	SELECT r.departure_city 
-	FROM bookings.routes r
+CREATE OR REPLACE VIEW bookings.dep_city AS (
+SELECT DISTINCT city dep_city
+FROM bookings.flights f
+LEFT JOIN bookings.airports a 
+ON f.departure_airport = a.airport_code
+ORDER BY city
 );
 
-CREATE VIEW arr_city AS (
-	SELECT r.arrival_city 
-	FROM bookings.routes r
+CREATE OR REPLACE VIEW bookings.arr_city AS (
+SELECT DISTINCT city arr_city
+FROM bookings.flights f
+LEFT JOIN bookings.airports a 
+ON f.arrival_airport = a.airport_code
+ORDER BY city
 );
 
 -- all possible direct flights
-SELECT DISTINCT CONCAT (departure_city, ' ', arrival_city) combinations
-FROM (SELECT departure_city, arrival_city FROM dep_city CROSS JOIN arr_city) cross_join
-ORDER BY combinations;
+SELECT CONCAT (dep_city, ' ', arr_city) all_possible_flights
+FROM (
+SELECT * FROM bookings.dep_city dc, bookings.arr_city ac
+WHERE dep_city != arr_city) all_possible;
 
 -- existing direct flights
-SELECT DISTINCT CONCAT (departure_city, ' ', arrival_city) combinations
-FROM bookings.routes r
-ORDER BY combinations;
+SELECT CONCAT (departure_city, ' ', arrival_city) existing_flights
+FROM (
+SELECT DISTINCT
+	a1.city departure_city,
+	a2.city arrival_city
+FROM bookings.flights f
+LEFT JOIN bookings.airports a1 
+ON f.departure_airport = a1.airport_code
+LEFT JOIN bookings.airports a2 
+ON f.arrival_airport = a2.airport_code
+ORDER BY a1.city) existing_only;
 
+WITH non_existing_direct AS (
 -- choose all possible direct flights
-SELECT DISTINCT CONCAT (departure_city, ' ', arrival_city) combinations
-FROM (SELECT departure_city, arrival_city FROM dep_city CROSS JOIN arr_city) cross_join
+SELECT CONCAT (dep_city, ' ', arr_city) possible_flights
+FROM (
+SELECT * FROM bookings.dep_city dc, bookings.arr_city ac
+WHERE dep_city != arr_city) all_possible
 EXCEPT
 -- and subtract existing direct flights
-SELECT DISTINCT CONCAT (departure_city, ' ', arrival_city) combinations
-FROM bookings.routes r
-ORDER BY combinations;
+SELECT CONCAT (departure_city, ' ', arrival_city) existing_flights
+FROM (
+SELECT DISTINCT
+	a1.city departure_city,
+	a2.city arrival_city
+FROM bookings.flights f
+LEFT JOIN bookings.airports a1 
+ON f.departure_airport = a1.airport_code
+LEFT JOIN bookings.airports a2 
+ON f.arrival_airport = a2.airport_code
+ORDER BY a1.city) existing_only)
+SELECT * FROM non_existing_direct
+ORDER BY possible_flights;
 
 
 -- query 9
