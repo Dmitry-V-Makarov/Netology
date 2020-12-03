@@ -119,95 +119,19 @@ GROUP BY
 
 -- query 7
 
--- WITH CTE
--- Step 1: max and min amount by flight and by class
-WITH min_max_amount AS (
-SELECT
-	ROW_NUMBER() OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS row_n,
-	f.flight_id,
-	f.flight_no,
-	f.departure_airport dep,
-	f.arrival_airport arr,
-	tf.fare_conditions fare,
-	MAX(amount) OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS max_amount,
-	MIN(amount) OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS min_amount
-FROM bookings.flights f
+WITH prices AS (
+SELECT f.flight_id, tf.fare_conditions, MIN(amount) min_amount, MAX(amount) max_amount
+FROM bookings.flights f 
 RIGHT JOIN bookings.ticket_flights tf 
 ON f.flight_id = tf.flight_id
-WHERE tf.fare_conditions != 'Comfort'
-ORDER BY f.flight_id, tf.fare_conditions)
--- Step 4: max price in economy vs. min price in business by flight
-SELECT
-	e.flight_id,
-	e.flight_no,
-	e.dep,
-	e.arr,
-	e.max_amount econ_max,
-	b.min_amount business_min
-FROM
--- Step 2: Economy ticket with min and max amount by flight
-(SELECT
-	flight_id, flight_no, dep, arr, min_amount, max_amount
-FROM min_max_amount
-WHERE row_n = 1 AND fare = 'Economy') e
-LEFT JOIN
--- Step 3: Business ticket with min and max amount by flight
-(SELECT
-	flight_id, flight_no, dep, arr, min_amount, max_amount
-FROM min_max_amount
-WHERE row_n = 1 AND fare = 'Business') b
-ON e.flight_id = b.flight_id
--- Step 5: flights with (both business AND economy) AND min in business < max in economy
-WHERE b.flight_id IS NOT NULL AND b.min_amount < e.max_amount;
-
--- WITHOUT CTE
-SELECT
-	e.flight_id,
-	e.flight_no,
-	e.dep,
-	e.arr,
-	e.max_amount econ_max,
-	b.min_amount business_min
-FROM
-(SELECT
-	flight_id, flight_no, dep, arr, min_amount, max_amount
-FROM 
-(SELECT
-	ROW_NUMBER() OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS row_n,
-	f.flight_id,
-	f.flight_no,
-	f.departure_airport dep,
-	f.arrival_airport arr,
-	tf.fare_conditions fare,
-	MAX(amount) OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS max_amount,
-	MIN(amount) OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS min_amount
-FROM bookings.flights f
-RIGHT JOIN bookings.ticket_flights tf 
-ON f.flight_id = tf.flight_id
-WHERE tf.fare_conditions != 'Comfort'
-ORDER BY f.flight_id, tf.fare_conditions) sub
-WHERE row_n = 1 AND fare = 'Economy') e
-LEFT JOIN
-(SELECT
-	flight_id, flight_no, dep, arr, min_amount, max_amount
-FROM 
-(SELECT
-	ROW_NUMBER() OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS row_n,
-	f.flight_id,
-	f.flight_no,
-	f.departure_airport dep,
-	f.arrival_airport arr,
-	tf.fare_conditions fare,
-	MAX(amount) OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS max_amount,
-	MIN(amount) OVER (PARTITION BY f.flight_id, tf.fare_conditions) AS min_amount
-FROM bookings.flights f
-RIGHT JOIN bookings.ticket_flights tf 
-ON f.flight_id = tf.flight_id
-WHERE tf.fare_conditions != 'Comfort'
-ORDER BY f.flight_id, tf.fare_conditions) sub
-WHERE row_n = 1 AND fare = 'Business') b
-ON e.flight_id = b.flight_id
-WHERE b.flight_id IS NOT NULL AND b.min_amount < e.max_amount;
+GROUP BY f.flight_id, tf.fare_conditions
+HAVING tf.fare_conditions != 'Comfort' AND COUNT(tf.fare_conditions) > 1
+)
+SELECT b.flight_id, b.min_amount business_min, e.max_amount economy_max
+FROM (SELECT * FROM prices WHERE fare_conditions = 'Business') b
+LEFT JOIN (SELECT * FROM prices WHERE fare_conditions = 'Economy') e
+ON b.flight_id = e.flight_id
+WHERE b.min_amount < e.max_amount;
 
 
 -- query 8
