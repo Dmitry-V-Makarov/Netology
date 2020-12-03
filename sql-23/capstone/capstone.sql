@@ -151,15 +151,14 @@ CREATE OR REPLACE VIEW bookings.dep_city AS (
 SELECT DISTINCT city dep_city
 FROM bookings.flights f
 LEFT JOIN bookings.airports a ON f.departure_airport = a.airport_code
-ORDER BY city );
+ORDER BY city);
 
 CREATE OR REPLACE VIEW bookings.arr_city AS (
 SELECT DISTINCT city arr_city
 FROM bookings.flights f
 LEFT JOIN bookings.airports a 
 ON f.arrival_airport = a.airport_code
-ORDER BY city
-);
+ORDER BY city);
 
 -- all possible direct flights
 SELECT CONCAT (dep_city, ' ', arr_city) all_possible_flights
