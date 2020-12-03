@@ -118,19 +118,31 @@ GROUP BY
 
 
 -- query 7
-
-WITH prices AS (
-SELECT f.flight_id, tf.fare_conditions, MIN(amount) min_amount, MAX(amount) max_amount
-FROM bookings.flights f 
-RIGHT JOIN bookings.ticket_flights tf 
-ON f.flight_id = tf.flight_id
-GROUP BY f.flight_id, tf.fare_conditions
-HAVING tf.fare_conditions != 'Comfort' AND COUNT(tf.fare_conditions) > 1
-)
-SELECT b.flight_id, b.min_amount business_min, e.max_amount economy_max
+-- min and max prices by flight, by class (economy AND business only)
+WITH prices AS 
+(
+SELECT
+	f.flight_id,
+	tf.fare_conditions,
+	MIN(amount) min_amount,
+	MAX(amount) max_amount
+FROM bookings.flights f
+RIGHT JOIN bookings.ticket_flights tf ON f.flight_id = tf.flight_id
+GROUP BY
+	f.flight_id,
+	tf.fare_conditions
+HAVING
+	tf.fare_conditions != 'Comfort' AND COUNT(tf.fare_conditions) > 1 
+	)
+-- min price in business and max price in economy
+SELECT
+	b.flight_id,
+	b.min_amount business_min,
+	e.max_amount economy_max
 FROM (SELECT * FROM prices WHERE fare_conditions = 'Business') b
-LEFT JOIN (SELECT * FROM prices WHERE fare_conditions = 'Economy') e
+LEFT JOIN (SELECT * FROM prices WHERE fare_conditions = 'Economy') e 
 ON b.flight_id = e.flight_id
+-- where min in business < max in economy
 WHERE b.min_amount < e.max_amount;
 
 
@@ -138,10 +150,8 @@ WHERE b.min_amount < e.max_amount;
 CREATE OR REPLACE VIEW bookings.dep_city AS (
 SELECT DISTINCT city dep_city
 FROM bookings.flights f
-LEFT JOIN bookings.airports a 
-ON f.departure_airport = a.airport_code
-ORDER BY city
-);
+LEFT JOIN bookings.airports a ON f.departure_airport = a.airport_code
+ORDER BY city );
 
 CREATE OR REPLACE VIEW bookings.arr_city AS (
 SELECT DISTINCT city arr_city
@@ -168,7 +178,8 @@ LEFT JOIN bookings.airports a1
 ON f.departure_airport = a1.airport_code
 LEFT JOIN bookings.airports a2 
 ON f.arrival_airport = a2.airport_code
-ORDER BY a1.city) existing_only;
+ORDER BY a1.city) 
+	existing_only;
 
 WITH non_existing_direct AS (
 -- choose all possible direct flights
@@ -194,7 +205,6 @@ ORDER BY possible_flights;
 
 
 -- query 9
-
 -- distance and range comparison category for each flight
 WITH dist_range_comparison AS (
 -- airport lat and lon
